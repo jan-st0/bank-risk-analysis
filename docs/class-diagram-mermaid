@@ -1,0 +1,11 @@
+classDiagram
+    class PortfolioRecord{
+        <<dataclass>>
+        +int loan_id
+        +int principal_amount
+        +double pd_point_in_time
+        +double lgd_mean
+        +double asset_correlation
+        +int sector_id
+        
+    }
