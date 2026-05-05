@@ -1,0 +1,14 @@
+
+flowchart TD
+    posgresql --> |SQL|chnk[get_chunk]
+    chnk --> |pandas| pand[tansform_pipeline]
+    GenY[generate Y random martrix with values for each sector,simulation pair]
+    GenZ[generate Z random matrix]
+    BetDB[link tables with a custom sql that gives a df based on client pull]
+    GenB[create beta matrix based on chunk data frame]
+    BetDB --o GenB
+    pand --> GenB
+    vectOP[Run simulation for given chunk]
+    GenY --> |run once for all chunks|vectOP
+    GenZ --> |diffrent for each chunk|vectOP
+    GenB ----> vectOP
