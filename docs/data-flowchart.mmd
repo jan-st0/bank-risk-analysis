@@ -1,6 +1,5 @@
-
 flowchart TD
-    posgresql --> |SQL|chnk[get_chunk]
+    db[posgresql] --> |SQL|chnk[get_chunk]
     chnk --> |pandas| pand[tansform_pipeline]
     GenY[generate Y random martrix with values for each sector,simulation pair]
     GenZ[generate Z random matrix]
@@ -8,7 +7,26 @@ flowchart TD
     GenB[create beta matrix based on chunk data frame]
     BetDB --o GenB
     pand --> GenB
-    vectOP[Run simulation for given chunk]
+    vectOP{Run simulation for given chunk}
     GenY --> |run once for all chunks|vectOP
     GenZ --> |diffrent for each chunk|vectOP
     GenB ----> vectOP
+    db  -.-> Ft[get features table for training PD]
+    mod[prepare custom pipeline for training and validating model that outputs PD]
+    Ft -.-> mod -.Optional writing/caching clients PD.- db
+    CheckPD[check wich clients went default and calculate total loss for a simulation]
+    vectOP --> CheckPD
+    Mask1[calculate LDG values for each client in a chunk]
+    pand ---> Mask1
+    Mask1 ---> CheckPD
+    pand --> Inf[run model on transfomed data]
+    mod --> Inf
+    Inf ----o |PD column|CheckPD
+    CheckPD --> V[visualize data and calculate metrics]
+
+
+    
+
+
+
+
