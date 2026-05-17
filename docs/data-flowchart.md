@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     db[posgresql] --> |SQL|chnk[get_chunk]
     chnk --> |pandas| pand[tansform_pipeline]
@@ -23,10 +24,4 @@ flowchart TD
     mod --> Inf
     Inf ----o |PD column|CheckPD
     CheckPD --> V[visualize data and calculate metrics]
-
-
-    
-
-
-
-
+```
