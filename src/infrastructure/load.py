@@ -25,33 +25,35 @@ def load_csv_to_DataFrame(cfg: DictConfig, engine: Engine) -> tuple[DataFrame, D
         header=None, 
         usecols=cols_to_import,
         sep="|"
-    )
-    df.rename(columns=mapping, inplace=True)
-    # keep only the latest loan for each client
+    ).rename(columns=mapping)
+    # keep loans with highest delinquency status to determine default
     df["temp_date"] = pd.to_datetime(df["loan_report_date"].astype(str).str.zfill(6), format="%m%Y")
+    df["numeric_delq"] = pd.to_numeric(df["current_loan_delinquency_status"], errors="coerce")
+    df = df.sort_values(by=["loan_identifier", "numeric_delq", "temp_date"], na_position="first")
+    loan_df = (df.drop_duplicates(subset=["loan_identifier"], keep="last")
+               .drop(columns=["temp_date"]))
 
-    df = df.sort_values(by=["loan_identifier", "temp_date"], ascending=[True, True])
-    loan_df = (
-        df.sort_values(by=["loan_identifier", "temp_date"], ascending=[True, True])
-          .groupby("loan_identifier")
-          .tail(1)
-          .drop(columns=["temp_date"])
-    )
-    df = df["loan_age"] = df["loan_age"].astype(str)
+    #loan_df = (
+        #df.sort_values(by=["loan_identifier", "temp_date"], ascending=[True, True])
+        #.groupby("loan_identifier")
+        #.tail(1)
+        #.drop(columns=["temp_date"])
+    #)
 
+    loan_df["loan_age"] = loan_df["loan_age"].astype(str)
     # save date format MMYYYY as string
-    df["loan_report_date"] = df["loan_report_date"].astype(str)
-    unique_sectors = df['property_type'].unique()
+    loan_df["loan_report_date"] = loan_df["loan_report_date"].astype(str)
+
+    unique_sectors = loan_df['property_type'].unique()
     # create second table for sectors
     sector_df = DataFrame({
         "property_type": unique_sectors,
         "sector_id": range(1, len(unique_sectors) + 1)
     })
-    df = df.merge(sector_df, on="property_type", how="left")
-    loan_df = df.drop(columns=["property_type"])
+    loan_df = loan_df.merge(sector_df, on="property_type", how="left").drop(columns=["property_type"])
     # add sector beta coefficients
     sector_df = generate_sample_beta_coeffs(sector_df)
-    sector_df = add_random_number(sector_df)
+    loan_df = add_random_number(loan_df)
     return (loan_df, sector_df)
 
 def initialize_database(engine: Engine, schema_path: str) -> None:

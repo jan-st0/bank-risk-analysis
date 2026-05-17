@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS client_loan_data CASCADE;
+DROP TABLE IF EXISTS sectors CASCADE;
+
 CREATE TABLE IF NOT EXISTS sectors (
     sector_id INT PRIMARY KEY,
     property_type VARCHAR(2) UNIQUE,
@@ -17,5 +20,6 @@ CREATE TABLE IF NOT EXISTS client_loan_data (
     occupancy_status VARCHAR(1),
     loan_age VARCHAR(6),
     sector_id INT,
+    split REAL,
     FOREIGN KEY (sector_id) REFERENCES sectors(sector_id)
 );
