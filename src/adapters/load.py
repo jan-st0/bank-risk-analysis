@@ -1,13 +1,13 @@
-from omegaconf import DictConfig
 import pandas as pd
 from sqlalchemy import create_engine, text, Engine
 from pandas import DataFrame
 import numpy as np
 
+from src.config import DBConfig, DataConfig
+
 """
 This is etl pipeline for importing loan data from: Fannie Mae Single-Family Loan Performance Data, which is about 4 gb
 """
-
 
 def generate_sample_beta_coeffs(df: DataFrame)->DataFrame:
     return df.assign(asset_correlation=0.15, beta_economy=1.0)
@@ -16,12 +16,12 @@ def add_random_number(df: DataFrame) -> DataFrame:
     rng = np.random.default_rng()
     return df.assign(split=rng.random(len(df), dtype=np.float32))
 
-def load_csv_to_DataFrame(cfg: DictConfig, engine: Engine) -> tuple[DataFrame, DataFrame]:
-    mapping = cfg.data.column_mapping
+def load_csv_to_DataFrame(data_config:DataConfig) -> tuple[DataFrame, DataFrame]:
+    mapping = data_config.column_mapping
     cols_to_import = list(mapping.keys())
-    print(f"Reading data from {cfg.data.csv_file_path}...")
+    print(f"Reading data from {data_config.csv_file_path}...")
     df = pd.read_csv(
-        cfg.data.csv_file_path, 
+        data_config.csv_file_path, 
         header=None, 
         usecols=cols_to_import,
         sep="|"
@@ -64,12 +64,12 @@ def initialize_database(engine: Engine, schema_path: str) -> None:
         conn.commit()
     print("Database schema initialized")
 
-def load_csv(cfg: DictConfig)->None:
-    engine: Engine = create_engine(cfg.db.conn_string)
-    initialize_database(engine, cfg.data.schema_file)
-    loan_df, sector_df = load_csv_to_DataFrame(cfg, engine)
+def load_csv(db_config: DBConfig, data_config: DataConfig)->None:
+    engine: Engine = create_engine(db_config.conn_string)
+    initialize_database(engine, data_config.schema_file)
+    loan_df, sector_df = load_csv_to_DataFrame(data_config)
 
     with engine.begin() as conn:
-        loan_df.to_sql(cfg.data.loan_table_name, conn, if_exists="replace", index=False)
-        sector_df.to_sql(cfg.data.sector_table_name, conn, if_exists="replace", index=False)
-    print(f"Successfully loaded {len(loan_df)} rows into {cfg.data.loan_table_name} and {cfg.data.sector_table_name}")
+        loan_df.to_sql(data_config.loan_table_name, conn, if_exists="replace", index=False)
+        sector_df.to_sql(data_config.sector_table_name, conn, if_exists="replace", index=False)
+    print(f"Successfully loaded {len(loan_df)} rows into {data_config.loan_table_name} and {data_config.sector_table_name}")

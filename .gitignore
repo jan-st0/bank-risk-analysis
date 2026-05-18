@@ -1,6 +1,6 @@
 *.csv
 pd.py
-config.yaml
 .vscode/
 *__pycache__/
 *.xml
+config/secrets/
