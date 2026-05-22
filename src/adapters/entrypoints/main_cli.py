@@ -1,5 +1,5 @@
 import argparse
-from adapters.load_csv import load_csv
+from adapters.persistence.load_csv import load_csv
 from config.configuration_objects import RootConfig
 from config import load_root_config
 

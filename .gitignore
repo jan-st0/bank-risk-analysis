@@ -4,3 +4,4 @@ pd.py
 *__pycache__/
 *.xml
 config/secrets/api.yaml
+*.pdf

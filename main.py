@@ -1,4 +1,4 @@
-from src.entrypoints.main_cli import cli_run
+from adapters.entrypoints.main_cli import cli_run
 
 if __name__ == "__main__":
     cli_run()
