@@ -1,12 +1,9 @@
 import argparse
-from hydra import compose, initialize
-from hydra.utils import instantiate
+from adapters.load_csv import load_csv
+from config.configuration_objects import RootConfig
+from config import load_root_config
 
-from src.adapters.load import load_csv
-from src.config import RootConfig
-
-
-def main():
+def cli_run():
     parser = argparse.ArgumentParser(description="SCRMVF v2.0 Runner")
     parser.add_argument(
         "task",
@@ -15,14 +12,7 @@ def main():
     )
     args = parser.parse_args()
 
-    with initialize(version_base=None, config_path="../../config"):
-        hydra_cfg = compose(config_name="config")
-
-        cfg: RootConfig  = instantiate(hydra_cfg)
+    cfg: RootConfig  = load_root_config()
 
     if args.task == "etl":
         load_csv(cfg.secrets.db, cfg.app.data)
-
-
-if __name__ == "__main__":
-    main()

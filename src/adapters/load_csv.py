@@ -3,13 +3,14 @@ from sqlalchemy import create_engine, text, Engine
 from pandas import DataFrame
 import numpy as np
 
-from src.config import DBConfig, DataConfig
+from config.configuration_objects import DBConfig, DataConfig
 
 """
 This is etl pipeline for importing loan data from: Fannie Mae Single-Family Loan Performance Data, which is about 4 gb
 """
 
 def generate_sample_beta_coeffs(df: DataFrame)->DataFrame:
+    # todo: create a separate file/function for creating correlation coefficients for sectors
     return df.assign(asset_correlation=0.15, beta_economy=1.0)
 
 def add_random_number(df: DataFrame) -> DataFrame:
@@ -72,4 +73,3 @@ def load_csv(db_config: DBConfig, data_config: DataConfig)->None:
     with engine.begin() as conn:
         loan_df.to_sql(data_config.loan_table_name, conn, if_exists="replace", index=False)
         sector_df.to_sql(data_config.sector_table_name, conn, if_exists="replace", index=False)
-    print(f"Successfully loaded {len(loan_df)} rows into {data_config.loan_table_name} and {data_config.sector_table_name}")

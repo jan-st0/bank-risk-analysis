@@ -3,4 +3,4 @@ pd.py
 .vscode/
 *__pycache__/
 *.xml
-config/secrets/
+config/secrets/api.yaml
