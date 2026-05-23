@@ -1,4 +1,4 @@
 defaults:
   - _self_
-  - secrets: api
-  - app: pipeline
+  - secrets@db_config: api
+  - app@data_config: pipeline

@@ -3,5 +3,6 @@ pd.py
 .vscode/
 *__pycache__/
 *.xml
-config/secrets/api.yaml
 *.pdf
+*.ipynb
+config/secrets/

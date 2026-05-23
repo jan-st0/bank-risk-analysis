@@ -4,6 +4,7 @@ from pandas import DataFrame
 import numpy as np
 
 from config.configuration_objects import DBConfig, DataConfig
+from ports.database_port import DataWriterPort
 
 """
 This is etl pipeline for importing loan data from: Fannie Mae Single-Family Loan Performance Data, which is about 4 gb
@@ -65,11 +66,7 @@ def initialize_database(engine: Engine, schema_path: str) -> None:
         conn.commit()
     print("Database schema initialized")
 
-def load_csv(db_config: DBConfig, data_config: DataConfig)->None:
-    engine: Engine = create_engine(db_config.conn_string)
-    initialize_database(engine, data_config.schema_file)
+def load_csv(writer: DataWriterPort, data_config: DataConfig)->None:
+    writer.initialize_schema(data_config.schema_file)
     loan_df, sector_df = load_csv_to_DataFrame(data_config)
-
-    with engine.begin() as conn:
-        loan_df.to_sql(data_config.loan_table_name, conn, if_exists="replace", index=False)
-        sector_df.to_sql(data_config.sector_table_name, conn, if_exists="replace", index=False)
+    writer.write_portfolio_data(loan_df, sector_df)

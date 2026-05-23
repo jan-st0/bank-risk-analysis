@@ -1,6 +1,6 @@
-from hydra import initialize
+from hydra import compose, initialize
 from hydra.utils import instantiate
-from yaml import compose
+
 
 from config.configuration_objects import RootConfig
 
