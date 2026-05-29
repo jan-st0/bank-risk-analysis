@@ -1,9 +1,10 @@
 from typing import Protocol
 import pandas as pd
+from config.configuration_objects import MLConfig
 from domain.model.portfolio_containers import TrainingBatch, npFloat64
 
 class ModelTrainingPort(Protocol):
-    def train_and_calibrate(self, batch: TrainingBatch, save_dir: str) -> dict[str, float]:
+    def train_and_calibrate(self, batch: TrainingBatch, save_dir: str, ml_config: MLConfig) -> dict[str, float]:
         ...
 
 class ProbabilityOfDefaultInferencePort(Protocol):

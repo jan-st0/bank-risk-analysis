@@ -2,3 +2,4 @@ defaults:
   - _self_
   - secrets@db_config: api
   - app@data_config: pipeline
+  - app@ml_config: ml_params

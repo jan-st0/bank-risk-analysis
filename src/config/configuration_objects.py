@@ -16,6 +16,18 @@ class DataConfig:
     model_save_dir: str
 
 @dataclass
+class MLConfig:
+    n_estimators: int
+    learning_rate: float
+    max_depth: int
+    eval_metric: str
+    n_jobs: int
+    random_state: int
+    calibration_method: str
+    calibration_cv: int
+
+@dataclass
 class RootConfig:
     db_config: DBConfig
     data_config: DataConfig
+    ml_config: MLConfig

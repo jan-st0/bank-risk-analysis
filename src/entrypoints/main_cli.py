@@ -20,7 +20,10 @@ def cli_run():
     ml_adapter = VectorizedCalibratedXGBoostAdapter()
     
     orchestrator = ModelTrainingOrchestrator(
-        db_repository=db_adapter, ml_trainer=ml_adapter, save_dir=cfg.data_config.model_save_dir
+        db_repository=db_adapter, 
+        ml_trainer=ml_adapter, 
+        save_dir=cfg.data_config.model_save_dir,
+        ml_config=cfg.ml_config
     )
 
     if args.task == "etl":

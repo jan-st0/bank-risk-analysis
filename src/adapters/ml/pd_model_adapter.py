@@ -10,9 +10,9 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import roc_auc_score, brier_score_loss, log_loss
 from xgboost import XGBClassifier
 from domain.model.portfolio_containers import TrainingBatch, npFloat64
-from ports.ml_port import ModelTrainingPort, ProbabilityOfDefaultInferencePort
+from config.configuration_objects import MLConfig
 
-class VectorizedCalibratedXGBoostAdapter(ModelTrainingPort, ProbabilityOfDefaultInferencePort):
+class VectorizedCalibratedXGBoostAdapter:
     def __init__(self, model_file_name: str = "calibrated_pd_xgboost.pkl"):
         self._model_file_name = model_file_name
         self._calibrator: CalibratedClassifierCV | None = None
@@ -34,7 +34,7 @@ class VectorizedCalibratedXGBoostAdapter(ModelTrainingPort, ProbabilityOfDefault
                 working_df[col] = pd.to_numeric(working_df[col], errors="coerce").fillna(0.0)
         return working_df
 
-    def train_and_calibrate(self, batch: TrainingBatch, save_dir: str) -> dict[str, float]:
+    def train_and_calibrate(self, batch: TrainingBatch, save_dir: str, ml_config: MLConfig) -> dict[str, float]:
         X = batch.features
         y = batch.targets
 
@@ -49,12 +49,12 @@ class VectorizedCalibratedXGBoostAdapter(ModelTrainingPort, ProbabilityOfDefault
         )
 
         base_xgb = XGBClassifier(
-            n_estimators=150,
-            learning_rate=0.05,
-            max_depth=5,
-            eval_metric="logloss",
-            n_jobs=-1,
-            random_state=42
+            n_estimators=ml_config.n_estimators,
+            learning_rate=ml_config.learning_rate,
+            max_depth=ml_config.max_depth,
+            eval_metric=ml_config.eval_metric,
+            n_jobs=ml_config.n_jobs,
+            random_state=ml_config.random_state
         )
 
         core_pipeline = Pipeline(steps=[
@@ -64,8 +64,8 @@ class VectorizedCalibratedXGBoostAdapter(ModelTrainingPort, ProbabilityOfDefault
 
         self._calibrator = CalibratedClassifierCV(
             estimator=core_pipeline,
-            method="isotonic",
-            cv=5
+            method=ml_config.calibration_method,
+            cv=ml_config.calibration_cv
         )
 
         self._calibrator.fit(X_train, y_train)
