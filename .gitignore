@@ -1,8 +1,11 @@
-*.csv
 pd.py
 .vscode/
 *__pycache__/
 *.xml
 *.pdf
 *.ipynb
+*.pkl
 config/secrets/
+src/tests/
+data/*Q*.csv
+data/*sample.csv

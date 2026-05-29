@@ -1,77 +1,69 @@
-from typing import Iterator
+import os
 import pandas as pd
-from pandas import DataFrame
 from sqlalchemy import create_engine, text
-import numpy as np
 from config.configuration_objects import DataConfig
-from domain.model.portfolio_containers import PortfolioClientRaw, PORTFOLIO_STRUCTURED_DTYPE
 from ports.database_port import ClientRepository, DataWriterPort
 
-
-class SQLAlchemyClientRepository(ClientRepository, DataWriterPort):
-    
+class PostgreSQLUnifiedRepository(ClientRepository, DataWriterPort):
     def __init__(self, conn_str: str, data_config: DataConfig):
         self._engine = create_engine(conn_str)
-        self._loan_table_name = data_config.loan_table_name
-        self._sector_table_name = data_config.sector_table_name
         self._config = data_config
-        
-        self._target_columns = list(data_config.column_mapping.values())
-        if "sector_id" not in self._target_columns:
-            self._target_columns.append("sector_id")
-        if "split" not in self._target_columns:
-            self._target_columns.append("split")
 
-    def _compile_dynamic_query(self) -> str:
-        columns_clause = ", ".join(self._target_columns)
+    def _build_extraction_query(self, source_table: str) -> str:
         return f"""
-            SELECT {columns_clause} 
-            FROM {self._loan_table_name}
-            WHERE split >= :low AND split < :high
+            SELECT 
+                l.loan_identifier, l.current_actual_upb, l.loan_report_date,
+                l.current_loan_delinquency_status, l.zero_balance_code,
+                l.borrower_credit_score, l.ltv_ratio, l.debt_to_income,
+                l.occupancy_status, l.loan_age, l.sector_id, s.property_type
+            FROM {source_table} l
+            LEFT JOIN {self._config.sector_table_name} s ON l.sector_id = s.sector_id
         """
 
-    def stream_portfolio_chunks(self, chunks_count: int) -> Iterator[PortfolioClientRaw]:
-        split_intervals = np.linspace(0.0, 1.0, chunks_count + 1)
-        raw_sql_query = self._compile_dynamic_query()
-
+    def fetch_entire_training_set(self) -> pd.DataFrame:
+        query = self._build_extraction_query(self._config.training_table_name)
         with self._engine.connect() as conn:
-            for i in range(chunks_count):
-                low = float(split_intervals[i])
-                high = float(split_intervals[i+1])
-                
-                df = pd.read_sql_query(
-                    text(raw_sql_query), 
-                    conn, 
-                    params={"low": low, "high": high}
-                )
+            df = pd.read_sql_query(text(query), conn)
+        return df
 
-                if df.empty:
-                    continue
+    def stream_simulation_chunks(self, chunk_size: int):
+        query = self._build_extraction_query(self._config.simulation_table_name)
+        with self._engine.connect() as conn:
+            streaming_conn = conn.execution_options(stream_results=True)
+            proxy = streaming_conn.execute(text(query))
+            while True:
+                rows = proxy.fetchmany(chunk_size)
+                if not rows:
+                    break
+                yield pd.DataFrame(rows, columns=proxy.keys())
 
-                chunk_size = len(df)
-                structured_buffer = np.empty(chunk_size, dtype=PORTFOLIO_STRUCTURED_DTYPE)
-
-                for field_name in PORTFOLIO_STRUCTURED_DTYPE.names:
-                    target_dtype = PORTFOLIO_STRUCTURED_DTYPE[field_name]
-                    
-                    if field_name in df.columns:
-                        structured_buffer[field_name] = df[field_name].to_numpy(
-                            dtype=target_dtype, 
-                            copy=False
-                        )
-                    else:
-                        structured_buffer[field_name] = np.zeros(chunk_size, dtype=target_dtype)
-
-                yield PortfolioClientRaw(structured_buffer)
-    
     def initialize_schema(self, schema_path: str) -> None:
+        if not os.path.exists(schema_path):
+            raise FileNotFoundError(f"Target SQL schema file definition missing at: {schema_path}")
         with open(schema_path, "r") as schema_file:
             query = schema_file.read()
+            
         with self._engine.connect() as conn:
             conn.execute(text(query))
             conn.commit()
-    
-    def write_portfolio_data(self, loan_df: DataFrame, sector_df: DataFrame) -> None:
+
+    def write_portfolio_data(
+        self, 
+        sim_loan_df: pd.DataFrame, 
+        train_loan_df: pd.DataFrame, 
+        sector_df: pd.DataFrame
+    ) -> None:
+
         with self._engine.begin() as conn:
-            loan_df.to_sql(self._loan_table_name, conn, if_exists="replace", index=False)
-            sector_df.to_sql(self._sector_table_name, conn, if_exists="replace", index=False)
+            truncate_query = f"""
+                TRUNCATE TABLE 
+                    {self._config.simulation_table_name}, 
+                    {self._config.training_table_name}, 
+                    {self._config.sector_table_name} 
+                CASCADE;
+            """
+            conn.execute(text(truncate_query))
+            
+            sector_df.to_sql(self._config.sector_table_name, conn, if_exists="append", index=False)
+            sim_loan_df.to_sql(self._config.simulation_table_name, conn, if_exists="append", index=False)
+            train_loan_df.to_sql(self._config.training_table_name, conn, if_exists="append", index=False)

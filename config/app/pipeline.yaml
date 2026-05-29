@@ -1,4 +1,5 @@
-csv_file_path: "data/sf-loan-performance-data-sample.csv"
+training_csv_path: "data/2025Q3.csv"
+simulation_csv_path: "data/2025Q4.csv"
 column_mapping:
   11: "current_actual_upb"
   27: "property_type"
@@ -11,6 +12,8 @@ column_mapping:
   15: "loan_age"
   1: "loan_identifier"
   2: "loan_report_date"
-loan_table_name: "client_loan_data"
+simulation_table_name: "simulation_loan_data"
+training_table_name: "training_loan_data"
 sector_table_name: "sectors"
 schema_file: "data/db_schema.sql"
+model_save_dir: "models/"

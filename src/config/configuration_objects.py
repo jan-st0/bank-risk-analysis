@@ -1,17 +1,19 @@
 from dataclasses import dataclass
 
-
 @dataclass
 class DBConfig:
     conn_string: str
 
 @dataclass
 class DataConfig:
-    csv_file_path: str
+    training_csv_path: str
+    simulation_csv_path: str
     column_mapping: dict[int, str]
-    loan_table_name: str
+    simulation_table_name: str
+    training_table_name: str
     sector_table_name: str
     schema_file: str
+    model_save_dir: str
 
 @dataclass
 class RootConfig:
