@@ -16,15 +16,18 @@ class ModelTrainingOrchestrator:
         
         targets = np.where(
             (df["current_loan_delinquency_status"] >= 3) | 
-            (df["current_loan_delinquency_status"] == 99),
+            (df["current_loan_delinquency_status"] == 99), 
             1, 0
         ).astype(np.int32)
 
-        leakage_cols = ["loan_identifier", "loan_report_date", "current_loan_delinquency_status", "zero_balance_code", "sector_id"]
+        leakage_cols = [
+            "loan_identifier", "loan_report_date", "current_loan_delinquency_status", 
+            "zero_balance_code", "sector_id", "numeric_delq", "zb_code_clean", "temp_date"
+        ]
         feature_df = df.drop(columns=leakage_cols, errors="ignore")
         
         return TrainingBatch(
-            features=feature_df.to_numpy(),
+            features=feature_df,
             targets=targets,
             feature_names=feature_df.columns.tolist()
         )

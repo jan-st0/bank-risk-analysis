@@ -15,7 +15,8 @@ class PostgreSQLUnifiedRepository(ClientRepository, DataWriterPort):
                 l.loan_identifier, l.current_actual_upb, l.loan_report_date,
                 l.current_loan_delinquency_status, l.zero_balance_code,
                 l.borrower_credit_score, l.ltv_ratio, l.debt_to_income,
-                l.occupancy_status, l.loan_age, l.sector_id, s.property_type
+                l.occupancy_status, l.loan_age, l.sector_id, s.property_type,
+                s.beta_economy, s.asset_correlation
             FROM {source_table} l
             LEFT JOIN {self._config.sector_table_name} s ON l.sector_id = s.sector_id
         """

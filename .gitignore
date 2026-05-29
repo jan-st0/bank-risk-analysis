@@ -4,8 +4,8 @@ pd.py
 *.xml
 *.pdf
 *.ipynb
-*.pkl
 config/secrets/
 src/tests/
 data/*Q*.csv
 data/*sample.csv
+models/*

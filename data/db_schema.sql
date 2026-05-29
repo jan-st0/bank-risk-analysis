@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS simulation_loan_data CASCADE;
+DROP TABLE IF EXISTS training_loan_data CASCADE;
+DROP TABLE IF EXISTS sectors CASCADE;
 
 CREATE TABLE IF NOT EXISTS sectors (
     sector_id INT PRIMARY KEY,

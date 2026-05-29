@@ -20,10 +20,6 @@ class VectorizedCalibratedXGBoostAdapter(ModelTrainingPort, ProbabilityOfDefault
         self._numeric_features = ["current_actual_upb", "borrower_credit_score", "ltv_ratio", "debt_to_income", "loan_age"]
 
     def transform_raw_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Executes zero-copy string decoding and formatting using vectorized operations.
-        Replaces individual lambda transformations with optimized element-level conversions.
-        """
         working_df = df.copy()
         for col in self._categorical_features:
             if col in working_df.columns:
@@ -39,7 +35,7 @@ class VectorizedCalibratedXGBoostAdapter(ModelTrainingPort, ProbabilityOfDefault
         return working_df
 
     def train_and_calibrate(self, batch: TrainingBatch, save_dir: str) -> dict[str, float]:
-        X = pd.DataFrame(batch.features, columns=batch.feature_names)
+        X = batch.features
         y = batch.targets
 
         X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
