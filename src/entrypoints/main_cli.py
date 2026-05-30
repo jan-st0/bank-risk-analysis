@@ -2,6 +2,7 @@ import argparse
 from adapters.persistence.db_repository import PostgreSQLUnifiedRepository
 from adapters.persistence.load_csv import load_csv
 from adapters.ml.pd_model_adapter import VectorizedCalibratedXGBoostAdapter
+from adapters.presentation.diagrams import VisualPresenter
 from domain.services.model_training_engine import ModelTrainingOrchestrator
 from domain.services.simulation_engine import CreditPortfolioSimulationEngine
 from config.configuration_objects import RootConfig
@@ -18,6 +19,7 @@ def cli_run():
 
     db_adapter = PostgreSQLUnifiedRepository(conn_str=cfg.db_config.conn_string, data_config=cfg.data_config)
     ml_adapter = VectorizedCalibratedXGBoostAdapter()
+    presenter_adapter = VisualPresenter()
     
     orchestrator = ModelTrainingOrchestrator(
         db_repository=db_adapter, 
@@ -35,11 +37,14 @@ def cli_run():
         
     elif args.task == "simulate":
         engine = CreditPortfolioSimulationEngine(
-            db_repo=db_adapter, inference_adapter=ml_adapter, save_dir=cfg.data_config.model_save_dir
+            db_repo=db_adapter, 
+            inference_adapter=ml_adapter, 
+            save_dir=cfg.data_config.model_save_dir,
+            present_adapter=presenter_adapter
         )
         engine.ensure_model_exists(training_orchestrator=orchestrator)
         engine.run_portfolio_simulation(
-            chunk_size=20000, 
+            chunk_size=10000, 
             num_simulations=args.simulations, 
             num_workers=args.workers
         )

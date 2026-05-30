@@ -16,7 +16,7 @@ The codebase separates operations into three distinct modules:
 
 * **ETL & Persistence:** Extracts raw CSV records, applies temporal aggregation and feature cleansing, and loads the standardized data into a PostgreSQL database.
 * **Machine Learning Pipeline:** Trains an XGBoost classifier to predict the Probability of Default (PD). The pipeline applies Isotonic Calibration via cross-validation to ensure outputs represent empirical probabilities.
-* **Simulation Engine:** Implements a multi-factor structural default model. It utilizes deterministic numpy.random.PCG64 streams across parallel worker processes to simulate macroeconomic shocks and estimate the portfolio's expected loss distribution.
+* **Simulation Engine:** Implements a multi-factor structural default model.
 
 ## Installation
 The framework requires Python 3.10+ and a functional PostgreSQL database instance.
