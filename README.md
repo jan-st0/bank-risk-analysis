@@ -24,7 +24,7 @@ Configuration variables and schema mappings are managed via Hydra in the `config
 Put your db connection string in `config/secrets/conn.yaml`
 
 ```bash
-git clone <repository_url>
+git clone https://github.com/jan-st0/bank-risk-analysis
 cd bank-risk-analysis
 pip install -r requirements.txt
 ```
