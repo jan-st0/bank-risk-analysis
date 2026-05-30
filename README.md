@@ -9,7 +9,7 @@ For now the etl requires 2 csv files with Single Family dataset format.
    - csv for simulation
 
 You can download 2025Q3 and Q4 from Frannie Mae official site or [My drive](https://drive.google.com/drive/folders/1bboB3lDKmR_dQ2-Bomi-LVMhcEeBHZZ5?usp=sharing)
-If you wanted to use different datasets then update `config/app/pipeline.yaml`
+Make sure you change `config/secrets/conn_sample.yaml` to `conn.yaml` with approprate connection string. And `config/app/pipeline.yaml` to include all your csv files.
 
 ## System Architecture
 The codebase separates operations into three distinct modules:
@@ -29,7 +29,6 @@ cd bank-risk-analysis
 pip install -r requirements.txt
 ```
 
-Ensure that the target financial CSV assets (2025Q3.csv, 2025Q4.csv) are placed within the data/ directory prior to execution, and that the database connection string is properly defined in config/config.yaml.
 
 ## How To Run The Project
 
