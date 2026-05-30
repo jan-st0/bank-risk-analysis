@@ -83,15 +83,19 @@ The dynamic default indicator function for a given simulation path is defined as
 $$\mathbb{I}_{i} = \begin{cases} 1 & \text{if } A_i < \gamma_i \\ 0 & \text{if } A_i \geq \gamma_i \end{cases}$$
 
 ### 3. Loss Given Default (LGD) Model
-Rather than applying a static recovery boundary, the conditional Loss Given Default ($\text{LGD}_i$) is sampled dynamically along each simulated path from a Beta distribution parameterized via the Method of Moments. The mean parameter $\mu_i$ is derived as a linear scaling function of the loan's Loan-to-Value ratio ($\text{LTV}_i$), clipped inside stable boundaries $[0.10, 0.99]$:
+The current execution engine implements a stochastic mapping for Loss Given Default ($\text{LGD}_i$), utilizing an affine transformation of the Loan-to-Value ($\text{LTV}_i$) ratio coupled with a uniform noise injection.
 
-$$\mu_i = \min\left(\max\left( \text{Baseline LGD} \times \frac{\text{LTV}_i}{80.0}, 0.10 \right), 0.99\right)$$
+The conditional baseline mean $\mu_i$ is linearly scaled by the underlying loan's LTV profile. To maintain numerical stability and avoid absorbing states, this mean projection is strictly clipped to the domain boundary $[0.10, 0.95]$:
 
-Using a fixed variance factor $\sigma^2$, the continuous shape parameters $\alpha_i$ and $\beta_i$ are derived as:
+$$\mu_i = \min\left(\max\left( \text{Baseline LGD} \times \frac{\text{LTV}_i}{80.0}, 0.10 \right), 0.95\right)$$
 
-$$\alpha_i = \mu_i \left( \frac{\mu_i(1 - \mu_i)}{\sigma^2} - 1 \right), \quad \beta_i = (1 - \mu_i) \left( \frac{\mu_i(1 - \mu_i)}{\sigma^2} - 1 \right)$$
+To simulate idiosyncratic recovery variance independent of the structural default mechanism, a uniform noise vector $U_i$ is sampled for each obligor:
 
-$$\text{LGD}_i \sim \text{Beta}(\max(\alpha_i, 1.0), \max(\beta_i, 1.0))$$
+$$U_i \sim \mathcal{U}(-0.15, 0.15)$$
+
+The final realized $\text{LGD}_i$ for a given stochastic path is the arithmetic summation of the LTV-derived conditional mean and the localized uniform shock. The output is bounded globally by a defined limit operator $[0.05, 0.99]$ to ensure strict domain compliance during matrix aggregation:
+
+$$\text{LGD}_i = \min(\max(\mu_i + U_i, 0.05), 0.99)$$
 
 ### 4. Portfolio Loss Accumulation
 The total accumulated portfolio loss $L$ for a given macroeconomic scenario path is the summation of individual loan exposures across all active default indicators:

@@ -3,7 +3,6 @@ import pytest
 from domain.model.portfolio_containers import PortfolioSimulationChunk
 from domain.model.math_engine import VasicekMonteCarloEngine, StochasticLGDModel
 
-
 @pytest.fixture
 def sample_simulation_chunk() -> PortfolioSimulationChunk:
     """
@@ -11,11 +10,11 @@ def sample_simulation_chunk() -> PortfolioSimulationChunk:
     Simulates 3 distinct credit profiles mapping across different sectors.
     """
     upb = np.array([500_000.0, 250_000.0, 1_200_000.0], dtype=np.float64)
-    sectors = np.array([0, 1, 0], dtype=np.int32)  # Sector indices matching rows
-    pd_vector = np.array([0.02, 0.05, 0.01], dtype=np.float64)  # Base PD thresholds
-    beta = np.array([0.15, 0.22, 0.15], dtype=np.float64)  # Macroeconomic beta sensitivities
-    rho = np.array([0.10, 0.15, 0.10], dtype=np.float64)  # sector asset correlations
-    ltv = np.array([75, 90, 60], dtype=np.int32)  # Loan-to-value markers for LGD scaling
+    sectors = np.array([0, 1, 0], dtype=np.int32)
+    pd_vector = np.array([0.02, 0.05, 0.01], dtype=np.float64)
+    beta = np.array([0.15, 0.22, 0.15], dtype=np.float64)
+    rho = np.array([0.10, 0.15, 0.10], dtype=np.float64)
+    ltv = np.array([75, 90, 60], dtype=np.int32)
     
     return PortfolioSimulationChunk(
         upb=upb,
@@ -26,64 +25,67 @@ def sample_simulation_chunk() -> PortfolioSimulationChunk:
         ltv=ltv
     )
 
-
 def test_stochastic_lgd_model_bounds():
     """
-    Validates that the Beta distribution method of moments calculation within
-    StochasticLGDModel handles vector arithmetic safely and clips outputs inside [0.10, 0.99].
+    Validates the stochastic LGD mapping utilizing affine LTV transformations 
+    and uniform noise injections. Enforces the systemic bounds [0.05, 0.99]
+    defined within the current execution layer.
     """
-    model = StochasticLGDModel(baseline_lgd=0.45, variance_factor=0.05)
-    prng = np.random.Generator(np.random.PCG64(12345))
+    model = StochasticLGDModel(baseline_lgd=0.45)
     
-    # Test extreme input conditions to verify maximum/minimum clipping paths
+    # Test extreme input boundaries to explicitly force mathematical domain clipping
     ltv_vector = np.array([0, 80, 500], dtype=np.int32)
-    lgd_vector = model.calculate_lgd_vector(ltv_vector, prng)
+    
+    # The underlying module relies on legacy np.random.uniform. 
+    # Global state seeding is mandatory here to prevent stochastic test flakiness.
+    np.random.seed(101)
+    lgd_vector = model.calculate_lgd_vector(ltv_vector)
     
     assert lgd_vector.shape == (3,)
     assert lgd_vector.dtype == np.float64
-    # Ensure all elements fall strictly within the theoretical domain definitions
-    assert np.all(lgd_vector >= 0.10)
+    
+    # Verify empirical outputs match the implemented limit operators.
+    # A loan with 0 LTV yields a mapped mean of 0.10. A uniform shock of -0.15
+    # yields -0.05. The global clip MUST bind this correctly to 0.05.
+    assert np.all(lgd_vector >= 0.05)
     assert np.all(lgd_vector <= 0.99)
-
 
 def test_vasicek_monte_carlo_engine_execution(sample_simulation_chunk):
     """
-    Performs an integration test over the vectorized multi-factor portfolio simulation engine.
-    Verifies state tracking, execution consistency, and standard output dimensionality.
+    Executes the vectorized structural default framework. 
+    Validates matrix dimensionality, strict bounds on allocated loss, 
+    and mathematical invariance by manipulating the global PRNG pointer.
     """
     num_simulations = 1000
     num_sectors = 2
     
-    # Instantiate global systemic shocks using a fixed seed state
-    global_prng = np.random.Generator(np.random.PCG64(42))
-    y_global = global_prng.standard_normal(num_simulations, dtype=np.float64)
-    z_global = global_prng.standard_normal((num_sectors, num_simulations), dtype=np.float64)
+    # Generate globally deterministic macroeconomic scenarios
+    np.random.seed(42)
+    y_global = np.random.normal(0.0, 1.0, size=num_simulations).astype(np.float64)
+    z_global = np.random.normal(0.0, 1.0, size=(num_sectors, num_simulations)).astype(np.float64)
     
-    # Isolate child seeds to insulate the underlying parallel workers from dependency overlap
-    master_seed_seq = np.random.SeedSequence(99999)
-    
-    # Execute the integration pipeline over the isolated sample chunk
+    # Establish baseline legacy state to construct the first idiosyncratic epsilon matrix
+    np.random.seed(999)
     portfolio_loss_distribution = VasicekMonteCarloEngine.execute_chunk_simulation(
         chunk=sample_simulation_chunk,
         y_global=y_global,
-        z_global=z_global,
-        seed_sequence=master_seed_seq
+        z_global=z_global
     )
     
-    # Verify shape consistency matching simulation paths
+    # Vector dimensionality and contiguous byte alignments
     assert portfolio_loss_distribution.shape == (num_simulations,)
     assert portfolio_loss_distribution.dtype == np.float64
     
-    # Portfolio losses cannot be negative or exceed the total aggregate Unpaid Principal Balance (UPB)
+    # Total portfolio losses bounded [0, aggregate UPB]
     total_portfolio_upb = np.sum(sample_simulation_chunk.unpaid_principal_balance)
     assert np.all(portfolio_loss_distribution >= 0.0)
     assert np.all(portfolio_loss_distribution <= total_portfolio_upb)
     
-    # Run a secondary pass with an identical seed state to confirm mathematical invariance
+    np.random.seed(999)
     identical_loss_distribution = VasicekMonteCarloEngine.execute_chunk_simulation(
         chunk=sample_simulation_chunk,
         y_global=y_global,
-        z_global=z_global,
-        seed_sequence=master_seed_seq
+        z_global=z_global
     )
+    
     np.testing.assert_array_equal(portfolio_loss_distribution, identical_loss_distribution)
