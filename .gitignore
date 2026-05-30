@@ -5,7 +5,6 @@ pd.py
 *.pdf
 *.ipynb
 config/secrets/
-src/tests/
 data/*Q*.csv
 data/*sample.csv
 models/*
