@@ -21,18 +21,16 @@ class VectorizedCalibratedXGBoostAdapter:
 
     def transform_raw_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         working_df = df.copy()
-        for col in self._categorical_features:
-            if col in working_df.columns:
-                if working_df[col].dtype == object or isinstance(working_df[col].dtype, pd.CategoricalDtype):
-                    sample = working_df[col].iloc[0] if len(working_df) > 0 else None
-                    if isinstance(sample, bytes):
-                        working_df[col] = working_df[col].str.decode("utf-8")
-                working_df[col] = working_df[col].astype(str).str.strip()
         
         for col in self._numeric_features:
             if col in working_df.columns:
-                working_df[col] = pd.to_numeric(working_df[col], errors="coerce").fillna(0.0)
-        return working_df
+                working_df[col] = pd.to_numeric(working_df[col], errors="coerce")
+                
+        for col in self._categorical_features:
+            if col in working_df.columns:
+                working_df[col] = working_df[col].astype(str).str.strip().astype("category")
+                
+        return working_df[self._numeric_features + self._categorical_features]
 
     def train_and_calibrate(self, batch: TrainingBatch, save_dir: str, ml_config: MLConfig) -> dict[str, float]:
         X = batch.features
@@ -54,7 +52,9 @@ class VectorizedCalibratedXGBoostAdapter:
             max_depth=ml_config.max_depth,
             eval_metric=ml_config.eval_metric,
             n_jobs=ml_config.n_jobs,
-            random_state=ml_config.random_state
+            random_state=ml_config.random_state,
+            enable_categorical=True,
+            tree_method="hist"
         )
 
         core_pipeline = Pipeline(steps=[
