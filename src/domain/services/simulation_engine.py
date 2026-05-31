@@ -2,12 +2,12 @@ import os
 import time
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
-
 import psutil
+
 from ports.database_port import ClientRepository
 from ports.ml_port import ProbabilityOfDefaultInferencePort
 from domain.model.portfolio_containers import PortfolioSimulationChunk
-from domain.model.math_engine import VasicekMonteCarloEngine
+from domain.model.math_engine import IndependentMonteCarloEngine
 from ports.presentation_port import RenderVisualPresentation
 
 class CreditPortfolioSimulationEngine:
@@ -25,12 +25,7 @@ class CreditPortfolioSimulationEngine:
             training_orchestrator.execute_training_pipeline()
 
     @staticmethod
-    def calculate_dynamic_chunk_size(
-        num_simulations: int, 
-        num_workers: int, 
-        memory_utilization_target: float = 0.65
-    ) -> int:
-        
+    def calculate_dynamic_chunk_size(num_simulations: int, num_workers: int, memory_utilization_target: float = 0.8) -> int:
         available_memory_bytes = psutil.virtual_memory().available
         allocated_memory_budget = available_memory_bytes * memory_utilization_target
         
@@ -41,7 +36,6 @@ class CreditPortfolioSimulationEngine:
         real_world_bytes_per_row = bytes_per_row_simulated * 4 
         
         total_affordable_rows = int(usable_simulation_budget / real_world_bytes_per_row)
-        
         dynamic_chunk = int(total_affordable_rows / num_workers)
         
         return max(1000, min(dynamic_chunk, 10000))
@@ -50,10 +44,6 @@ class CreditPortfolioSimulationEngine:
         self._inference_adapter.load_model_asset(self._save_dir)
         chunk_size = self.calculate_dynamic_chunk_size(num_simulations, num_workers)
         print(f"[SIMULATION START] Processing {num_simulations} paths across {num_workers} parallel forks with {chunk_size} chunk size...")
-        
-        # Establish global systematic factors
-        y_global = np.random.normal(0.0, 1.0, size=num_simulations)
-        z_global = np.random.normal(0.0, 1.0, size=(100, num_simulations))
         
         global_loss_distribution = np.zeros(num_simulations, dtype=np.float64)
         t0 = time.time()
@@ -66,16 +56,13 @@ class CreditPortfolioSimulationEngine:
                 
                 sim_chunk = PortfolioSimulationChunk(
                     upb=chunk_df["current_actual_upb"].to_numpy(dtype=np.float64),
-                    sectors=chunk_df["sector_id"].to_numpy(dtype=np.int32),
                     pd_vector=pd_vector,
-                    beta=chunk_df["beta_economy"].to_numpy(dtype=np.float64),
-                    rho=chunk_df["asset_correlation"].to_numpy(dtype=np.float64),
                     ltv=chunk_df["ltv_ratio"].to_numpy(dtype=np.int32)
                 )
                 
                 future = executor.submit(
-                    VasicekMonteCarloEngine.execute_chunk_simulation,
-                    sim_chunk, y_global, z_global
+                    IndependentMonteCarloEngine.execute_chunk_simulation,
+                    sim_chunk, num_simulations
                 )
                 asynchronous_futures.append(future)
             
