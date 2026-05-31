@@ -44,7 +44,6 @@ def cli_run():
         )
         engine.ensure_model_exists(training_orchestrator=orchestrator)
         engine.run_portfolio_simulation(
-            chunk_size=10000, 
             num_simulations=args.simulations, 
             num_workers=args.workers
         )

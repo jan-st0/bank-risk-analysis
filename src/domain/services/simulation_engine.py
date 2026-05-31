@@ -2,6 +2,8 @@ import os
 import time
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
+
+import psutil
 from ports.database_port import ClientRepository
 from ports.ml_port import ProbabilityOfDefaultInferencePort
 from domain.model.portfolio_containers import PortfolioSimulationChunk
@@ -22,9 +24,32 @@ class CreditPortfolioSimulationEngine:
             print("[SYSTEM REGISTRATION] Executing baseline training pipeline orchestrator dynamically...")
             training_orchestrator.execute_training_pipeline()
 
-    def run_portfolio_simulation(self, chunk_size: int, num_simulations: int, num_workers: int) -> None:
+    @staticmethod
+    def calculate_dynamic_chunk_size(
+        num_simulations: int, 
+        num_workers: int, 
+        memory_utilization_target: float = 0.65
+    ) -> int:
+        
+        available_memory_bytes = psutil.virtual_memory().available
+        allocated_memory_budget = available_memory_bytes * memory_utilization_target
+        
+        base_process_overhead = num_workers * 350 * 1024 * 1024
+        usable_simulation_budget = max(0, allocated_memory_budget - base_process_overhead)
+        
+        bytes_per_row_simulated = num_simulations * 8
+        real_world_bytes_per_row = bytes_per_row_simulated * 4 
+        
+        total_affordable_rows = int(usable_simulation_budget / real_world_bytes_per_row)
+        
+        dynamic_chunk = int(total_affordable_rows / num_workers)
+        
+        return max(1000, min(dynamic_chunk, 10000))
+
+    def run_portfolio_simulation(self, num_simulations: int, num_workers: int) -> None:
         self._inference_adapter.load_model_asset(self._save_dir)
-        print(f"[SIMULATION START] Processing {num_simulations} paths across {num_workers} parallel forks...")
+        chunk_size = self.calculate_dynamic_chunk_size(num_simulations, num_workers)
+        print(f"[SIMULATION START] Processing {num_simulations} paths across {num_workers} parallel forks with {chunk_size} chunk size...")
         
         # Establish global systematic factors
         y_global = np.random.normal(0.0, 1.0, size=num_simulations)
